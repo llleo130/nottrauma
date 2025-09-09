@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Childhood Trauma Check • Gentle Self</title>
+    <meta name="description" content="Simple childhood trauma self-check. Answer a few questions, pay $1–$20 via Payoneer, and view your private result." />
+    <meta name="yandex-verification" content="ec3ed9b7270ff4c6" />
+    <meta name="google-site-verification" content="qdrCPdEHc2f-KQ3vDlKO1JOUgBo1AoJAo9GjnB6N30U" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'night': '#0B1020',
+              'midnight': '#0F1426',
+              'deep-navy': '#151A2F',
+              'plum': '#2B2440',
+              'graphite': '#1E2436',
+              'ink': '#0F172A',
+              'muted': '#6B7280',
+              'accent': '#3B82F6',
+              'accent-2': '#60A5FA',
+            },
+            boxShadow: {
+              soft: '0 20px 40px -20px rgba(0,0,0,0.55)'
+            },
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
+            },
+            keyframes: {
+              fadeSlide: {
+                '0%': { opacity: '0', transform: 'translateY(8px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' }
+              }
+            },
+            animation: {
+              fadeSlide: 'fadeSlide 300ms ease-out'
+            }
+          }
+        }
+      };
+    </script>
+
+    <style>
+      :root { color-scheme: light; }
+      html, body { height: 100%; }
+    </style>
+  </head>
+  <body class="min-h-screen bg-gradient-to-b from-white via-slate-50 to-blue-50 text-slate-800 font-sans antialiased selection:bg-accent/30 selection:text-slate-900">
+    <div id="root" class="min-h-screen"></div>
+
+    <!-- React + ReactDOM UMD -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel for in-browser JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
+
+    <!-- App Script -->
+    <script type="text/babel">
+      const { useState, useMemo, useEffect } = React;
+
+      const STORAGE_KEY = 'ct_childhood_test_v1';
+      const RESULTS_PENDING_KEY = 'ct_results_pending_v1';
+
+      const QUESTIONS = [
+        { id: 1,  text: 'I felt emotionally supported and safe at home.', reverse: true },
+        { id: 2,  text: 'I often had to take on adult responsibilities at a young age.' },
+        { id: 3,  text: 'I was frequently criticized or belittled.' },
+        { id: 4,  text: 'There was a stable routine that made me feel secure.', reverse: true },
+        { id: 5,  text: 'I witnessed frequent conflicts or shouting at home.' },
+        { id: 6,  text: 'My caregivers listened to my feelings with understanding.', reverse: true },
+        { id: 7,  text: 'I felt responsible for keeping the peace in my family.' },
+        { id: 8,  text: 'I experienced neglect (emotional or physical).' },
+        { id: 9,  text: 'I felt comfortable expressing my needs and boundaries.', reverse: true },
+        { id: 10, text: 'I had to be “perfect” to receive love or approval.' },
+        { id: 11, text: 'I sometimes felt unsafe in my own home.' },
+        { id: 12, text: 'Caregivers apologized and repaired after conflicts.', reverse: true },
+        { id: 13, text: 'I was shamed for my emotions (e.g., told to stop crying).' },
+        { id: 14, text: 'Adults modeled healthy ways to handle stress.', reverse: true },
+        { id: 15, text: 'I experienced inconsistent rules or unpredictable discipline.' },
+        { id: 16, text: 'I had at least one adult I could trust and rely on.', reverse: true },
+        { id: 17, text: 'I had to hide parts of myself to feel accepted.' },
+        { id: 18, text: 'My achievements were celebrated without conditions.', reverse: true },
+        { id: 19, text: 'There was substance abuse or addiction in my household.' },
+        { id: 20, text: 'I learned that my needs matter.', reverse: true },
+        { id: 21, text: 'I was exposed to emotional, physical, or sexual abuse.' },
+        { id: 22, text: 'I had reliable access to basic needs (food, healthcare, sleep).', reverse: true },
+        { id: 23, text: 'I often felt guilt or shame about things beyond my control.' },
+        { id: 24, text: 'Adults helped me name and regulate difficult emotions.', reverse: true },
+        { id: 25, text: 'I felt alone with my problems.' },
+        { id: 26, text: 'Family members communicated with respect.', reverse: true },
+        { id: 27, text: 'I was parentified (expected to care for others like an adult).' },
+        { id: 28, text: 'I could make age‑appropriate mistakes without harsh punishment.', reverse: true },
+        { id: 29, text: 'I experienced frequent moves, separations, or instability.' },
+        { id: 30, text: 'Looking back, I feel my childhood environment nurtured healthy growth.', reverse: true },
+      ];
+
+      const CHOICES = [
+        { label: 'Never', value: 0 },
+        { label: 'Rarely', value: 1 },
+        { label: 'Sometimes', value: 2 },
+        { label: 'Often', value: 3 },
+        { label: 'Very Often', value: 4 }
+      ];
+
+      function calculateScore(answers) {
+        return answers.reduce((sum, answer, index) => {
+          if (answer == null) return sum;
+          const isReverse = QUESTIONS[index].reverse;
+          const value = isReverse ? 4 - answer : answer;
+          return sum + value;
+        }, 0);
+      }
+
+      function getInterpretation(score) {
+        const max = QUESTIONS.length * 4;
+        const pct = Math.round((score / max) * 100);
+        let level = 'Gentle Awareness';
+        let note = 'Your responses suggest relatively fewer ongoing effects from early experiences.';
+        if (pct >= 34 && pct < 67) {
+          level = 'Areas to Explore';
+          note = 'Some patterns may still influence how you feel and relate. Reflection could be helpful.';
+        } else if (pct >= 67) {
+          level = 'High Impact';
+          note = 'Your answers suggest meaningful impact. Extra care and support may be helpful.';
+        }
+        return { level, note, pct, max };
+      }
+
+      function ProgressBar({ currentIndex, total, answeredCount }) {
+        const percent = Math.max(1, Math.round(((currentIndex + 1) / total) * 100));
+        const labelId = 'progress-label';
+        return (
+          <div className="mb-6">
+            <div id={labelId} className="mb-2 text-sm text-muted">{percent}% complete • {answeredCount}/{total} answered</div>
+            <div className="w-full h-2.5 bg-white/5 rounded-full overflow-hidden shadow-soft" role="progressbar" aria-labelledby={labelId} aria-valuenow={percent} aria-valuemin="0" aria-valuemax="100">
+              <div className="h-full bg-gradient-to-r from-accent/70 to-accent-2/70 rounded-full transition-all duration-500" style={{ width: `${percent}%` }}></div>
+            </div>
+          </div>
+        );
+      }
+
+      
+
+      function ChoiceGroup({ name, value, onChange }) {
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-6">
+            {CHOICES.map((choice) => (
+              <label key={choice.value} className="relative block cursor-pointer">
+                <input
+                  type="radio"
+                  name={name}
+                  value={choice.value}
+                  checked={value === choice.value}
+                  onChange={() => onChange(choice.value)}
+                  className="peer sr-only"
+                />
+                <div className="select-none rounded-2xl bg-white/5 hover:bg-white/10 peer-checked:bg-accent/20 border border-white/10 peer-checked:border-accent/30 backdrop-blur-sm px-4 py-3 text-center text-sm font-medium text-ink/90 peer-checked:text-ink shadow-soft transition transform active:scale-[0.98]">
+                  {choice.label}
+                </div>
+              </label>
+            ))}
+          </div>
+        );
+      }
+
+      function Home({ onStartNew, onResume, canResume }) {
+        const [modal, setModal] = useState(null); // 'privacy' | 'terms' | 'cookie' | 'refund' | 'cancel' | 'help' | 'blog' | 'reviews' | 'pricing' | null
+        const MODAL_TITLES = {
+          privacy: 'Privacy Policy',
+          terms: 'Terms of Use',
+          cookie: 'Cookie Policy',
+          refund: 'Refund Policy',
+          cancel: 'How to cancel',
+          help: 'Help',
+          blog: 'Blog',
+          reviews: 'Reviews',
+          pricing: 'Pricing'
+        };
+        const MODAL_TEXTS = {
+          privacy: `Dirty Owens, [08.09.2025 21:01]
+🔒 Privacy Policy — MyTraumaTest
+
+We at MyTraumaTest (“we,” “us,” or “our”) respect your privacy and are committed to protecting your personal information. This Privacy Policy explains how we collect, use, store, and safeguard your data when you use our platform and services.
+
+⸻
+
+📑 Table of Contents
+ 1. Definitions and Key Terms
+ 2. Introduction and Scope
+ 3. Personal Data Collection
+ 4. Data Processing and Usage
+ 5. Data Storage and Security
+ 6. Analytics, Advertising, and Third-Party Services
+ 7. Your Rights and Choices
+ 8. Data Retention and Deletion
+ 9. International Data Transfers and Legal Jurisdiction
+ 10. Children’s Privacy
+ 11. Changes to This Policy
+ 12. Legal Information and Contact Details
+
+⸻
+
+1. Definitions and Key Terms
+
+1.1 Company and Service Terms
+ • MyTraumaTest: (“we,” “us,” “our”)
+ • Service: All features, functionalities, programs, and content available through MyTraumaTest
+ • Platform: Our website and related services accessible via any device
+ • User: Any individual accessing or using our services (“you” or “your”)
+
+1.2 Data and Privacy Terms
+ • Personal Data: Any information relating to an identified or identifiable person
+ • Processing: Any operation performed on personal data
+ • Data Controller: MyTraumaTest, determining the purposes and means of processing personal data
+ • Data Processor: Third parties that process personal data on our behalf
+ • Cookie: Small text file stored on your device containing usage data
+
+1.3 Security Terms
+ • Authentication: Verifying user identity
+ • Encryption: Encoding information to prevent unauthorized access
+ • Token: Unique identifier used for secure authentication
+ • SSL/TLS: Security protocols for encrypted data transmission
+
+⸻
+
+2. Introduction and Scope
+
+2.1 Policy Overview
+This Privacy Policy explains how MyTraumaTest collects, uses, and protects your personal data. It provides detailed information about your privacy rights and how you can exercise them.
+
+2.2 Policy Application
+This policy applies to:
+ • All users of MyTraumaTest worldwide
+ • All data collection methods
+ • All service features and functionalities
+ • All platform versions and updates
+
+2.3 Policy Updates
+ • We reserve the right to update this policy at any time
+ • Material changes will be notified via email
+ • Continued use after updates constitutes acceptance
+
+⸻
+
+3. Personal Data Collection
+
+3.1 Account Information
+ • Email address (required for authentication)
+ • Name (if provided during payment processing)
+ • Sign-in timestamps
+ • Unique account identifiers
+ • IP addresses
+
+3.2 Service Usage Data
+ • Test results (summary outcomes of the Childhood Trauma Test)
+ • Time spent on platform
+ • Features accessed
+ • Device and browser data
+
+3.3 Payment Information (if applicable)
+ • Tokenized payment method identifiers
+ • Last four digits of cards
+ • Expiration date (never full card numbers)
+
+3.4 Technical and Device Data
+ • Operating system, browser, device type
+ • IP address, network data, geolocation (from IP)
+ • Error logs and performance metrics
+
+⸻
+
+4. Data Processing and Usage
+
+We process personal data for:
+ • Service Provision: authentication, account management, delivering test results
+ • Payment Processing: subscription management, fraud prevention
+ • Communication: updates, support, legal notices
+ • Analytics and Research: improving features, user experience, and performance
+
+Legal bases for processing include: contractual necessity, legal obligations, legitimate interests, and user consent (e.g., for marketing).
+
+⸻
+
+5. Data Storage and Security
+ • All data is stored securely in encrypted servers.
+ • We apply SOC2 and GDPR-compliant security measures.
+ • Data in transit is protected by TLS encryption.
+ • Payment data is processed via PCI DSS-compliant providers.
+ • Regular audits and monitoring are in place.
+
+⸻
+
+6. Analytics, Advertising, and Third-Party Services
+
+We may use:
+ • Analytics: Google Analytics, MixPanel, Sentry (for performance/error tracking).
+ • Advertising Partners: Google, Facebook, TikTok, Snapchat, Pinterest.
+
+Dirty Owens, [08.09.2025 21:01]
+• Data shared with partners may include anonymized identifiers, device data, and interaction metrics.
+
+Users can opt out of tracking via browser settings or partner-specific opt-out tools.
+
+⸻
+
+7. Your Rights and Choices
+
+Depending on your jurisdiction (GDPR, CCPA, etc.), you have the right to:
+ • Access your personal data
+ • Request correction or deletion
+ • Withdraw consent for certain processing
+ • Object to processing
+ • Data portability
+
+Requests can be submitted at privacy@mytraumatest.com.
+
+⸻
+
+8. Data Retention and Deletion
+ • Account data: kept while active
+ • Payment data: stored as required by law
+ • Analytics data: retained for service improvement
+ • Upon request, data can be permanently deleted within 30 days
+
+⸻
+
+9. International Data Transfers and Legal Jurisdiction
+ • We ensure appropriate safeguards (e.g., Standard Contractual Clauses) for data transfers outside the EU/EEA.
+ • This Privacy Policy is governed by the laws of Delaware, USA.
+ • Disputes may be resolved through arbitration or legal proceedings as outlined in our Terms of Use.
+
+⸻
+
+10. Children’s Privacy
+ • Minimum age: 18 years
+ • We do not knowingly collect data from minors.
+ • Accounts identified as underage will be terminated.
+
+⸻
+
+11. Changes to This Policy
+ • Material changes will be announced via email and updated here.
+ • Continued use of the platform indicates acceptance.
+
+⸻
+
+12. Legal Information and Contact
+
+MyTraumaTest
+📧 Email: minddcheck@gmail.com
+📬 Address: 2093 Philadelphia Pike #3129, Claymont, DE 19703, United States`,
+          terms: `Dirty Owens, [08.09.2025 21:09]
+
+⸻
+
+📜 Terms & Conditions — MyTraumaTest
+
+Effective Date: January 1, 2025
+
+⸻
+
+📑 Table of Contents
+ 1. Definitions
+ 2. Welcome and Introduction
+ 3. Childhood Trauma Test Disclaimers
+ 4. Acceptance of Terms
+ 5. Account Eligibility and Security
+ 6. Subscription Services
+ 6.1 Plans and Pricing
+ 6.2 Trial Period
+ 6.3 Billing and Payment
+ 6.4 Cancellation Process
+ 7. Refund Policy
+ 8. Intellectual Property Rights
+ 9. User Content and Rights
+ 10. Service Level Agreement (SLA)
+ 11. Technical Requirements
+ 12. Customer Support and Complaints
+ 13. Limitation of Liability
+ 14. Dispute Resolution
+ 15. Service Modifications
+ 16. Account Termination
+ 17. Legal Information
+
+⸻
+
+1. Definitions
+
+1.1 Service and Platform Terms
+ • MyTraumaTest: Operating as MyTraumaTest (“we,” “us,” or “our”)
+ • Service: All features, tests, functionalities, and content available through MyTraumaTest
+ • Platform: Our website and related services accessible via any device
+ • User: Any individual accessing or using our services (“you” or “your”)
+
+1.2 Testing Terms
+ • Childhood Trauma Test: An assessment that provides insights into potential emotional patterns based on user responses.
+ • Results: Interpretative outcomes meant for self-reflection, not clinical diagnosis.
+
+1.3 Subscription Terms
+ • Subscription: Paid recurring access to premium features and extended test reports.
+ • Trial Period: Initial 7-day access period at a nominal cost.
+ • Billing Cycle: Frequency of charges (weekly, monthly, or quarterly).
+
+1.4 Security Terms
+ • Authentication Code: Single-use verification code for account access.
+ • Access Credentials: Information used to verify user identity.
+
+⸻
+
+2. Welcome and Introduction
+
+2.1 Platform Overview
+Welcome to MyTraumaTest! We provide self-reflection assessments designed to help you understand how past experiences may influence your current life.
+
+2.2 Agreement to Terms
+By accessing or using MyTraumaTest:
+ • You agree to these Terms and Conditions
+ • You accept our Privacy Policy
+ • You consent to our data practices
+ • You acknowledge the limitations of our service
+
+⸻
+
+3. Childhood Trauma Test Disclaimers
+
+3.1 Educational Purpose Only
+MyTraumaTest provides tests for educational and self-reflection purposes only. Users agree and acknowledge:
+ • Results are not a medical or psychological diagnosis
+ • The test cannot replace professional therapy or clinical assessment
+ • Outcomes are for personal understanding and awareness only
+
+3.2 Limitations
+Results may vary and can be influenced by environment, mindset, stress levels, and device performance.
+
+3.3 Professional Advice Notice
+ • MyTraumaTest does not provide professional medical or psychological advice
+ • Users should consult licensed professionals for clinical evaluation, therapy, or treatment
+
+3.4 User Responsibility
+All usage of results is at your own discretion. We are not liable for personal, academic, or professional decisions made based on the test.
+
+⸻
+
+4. Acceptance of Terms
+ • By using MyTraumaTest, you confirm you have read and agree to these Terms.
+ • If you do not agree, you must not use the service.
+ • We reserve the right to update these Terms at any time. Continued use after updates indicates acceptance.
+
+⸻
+
+5. Account Eligibility and Security
+ • Minimum age: 18 years
+ • Valid email required for registration
+ • Users must protect account access and not share credentials
+ • Unauthorized access or fraudulent activity may result in termination
+
+⸻
+
+6. Subscription Services
+
+6.1 Plans and Pricing
+ • Trial: 7 days for $1.00
+ • Standard Plans: weekly, monthly, or quarterly billing as displayed at signup
+
+6.2 Trial Period
+ • Limited to new users only
+ • Automatically converts to selected subscription plan unless canceled
+
+6.3 Billing and Payment
+ • Secure payments via PCI-DSS compliant providers
+ • Automatic billing at the end of each cycle unless canceled
+
+6.4 Cancellation Process
+
+Dirty Owens, [08.09.2025 21:09]
+• Users may cancel anytime through self-service portal or by contacting support at minddcheck@gmail.com
+ • Service continues until end of current billing period
+
+⸻
+
+7. Refund Policy
+
+Refunds are only provided in cases of billing errors, duplicate charges, or service unavailability exceeding 24 hours. Partial refunds or unused subscription time are not refundable.
+
+⸻
+
+8. Intellectual Property Rights
+
+All content, designs, and reports on MyTraumaTest are proprietary and protected by copyright.
+
+⸻
+
+9. User Content and Rights
+
+Users retain ownership of their input data but grant MyTraumaTest a license to process it for service delivery and anonymized analytics.
+
+⸻
+
+10. Service Level Agreement (SLA)
+
+We aim for 97% uptime annually, excluding scheduled maintenance and force majeure events.
+
+⸻
+
+11. Technical Requirements
+ • Latest browser versions required (Chrome, Safari, Firefox, Edge)
+ • Stable internet connection (1 Mbps minimum)
+ • Cookies and JavaScript must be enabled
+
+⸻
+
+12. Customer Support and Complaints
+
+Support is available 24/7 via:
+ • Help Center
+ • Email: minddcheck@gmail.com
+Average response time: 6–12 hours.
+
+⸻
+
+13. Limitation of Liability
+
+We are not liable for any direct or indirect damages arising from use of our tests or services.
+
+⸻
+
+14. Dispute Resolution
+
+Disputes shall be resolved through good-faith negotiation. If unresolved, disputes will be subject to binding arbitration under Delaware law (USA).
+
+⸻
+
+15. Service Modifications
+
+We may update, modify, or discontinue features without prior notice.
+
+⸻
+
+16. Account Termination
+
+We reserve the right to suspend or terminate accounts for violations of these Terms or suspicious activity.
+
+⸻
+
+17. Legal Information
+
+For legal inquiries, please contact us at:
+📧 Email: minddcheck@gmail.com
+📬 Address: 2093 Philadelphia Pike #3129, Claymont, DE 19703, USA`,
+          cookie: `Cookie Policy — MyTraumaTest
+
+Effective Date: January 1, 2025
+
+This Cookie Policy explains how MyTraumaTest (“we,” “us,” “our”) uses cookies and similar technologies on our website (the “Site”). It should be read together with our Privacy Policy and Terms & Conditions. By using the Site, you consent to the use of cookies as described below.
+
+⸻
+
+1) What are cookies?
+
+Cookies are small text files placed on your device to remember information about you, such as your preferences or how you interact with the Site. We also use related technologies (e.g., web beacons, pixels, local storage) collectively referred to here as “cookies.”
+
+⸻
+
+2) Why we use cookies
+
+We use cookies to:
+ • Operate the Site (load pages, keep you signed in, secure sessions)
+ • Measure performance (understand traffic, diagnose errors)
+ • Improve experience (remember preferences, tailor content)
+ • Support marketing (measure campaign effectiveness, prevent fraud)
+
+⸻
+
+3) Types of cookies we use
+ • Essential / Strictly Necessary: Required for core functionality (e.g., page navigation, security, session management). These cannot be switched off via our cookie controls.
+ • Performance / Analytics: Help us understand how visitors use the Site (e.g., pages viewed, time on page, errors) so we can improve performance.
+ • Functionality: Remember choices (e.g., language, region) to provide enhanced features.
+ • Advertising / Measurement (if enabled): Measure campaign results and, where applicable, deliver or limit promotional content.
+
+Duration: Some cookies are session cookies (deleted when you close your browser); others are persistent (remain until they expire or you delete them).
+
+⸻
+
+4) Analytics and third-party cookies
+
+We may use third-party analytics services (e.g., Google Analytics) to collect aggregated usage data (IP address truncated/processed per provider settings, device/browser info, pages visited, time spent). This helps us analyze and improve the Site.
+ • Learn more about Google’s data practices in Google’s Privacy Policy.
+ • To opt out of Google Analytics across sites, you can use the Google Analytics Opt-Out Add-on (if available in your region/browser).
+
+Third-party providers may set their own cookies and have their own policies. We do not control their cookies.
+
+⸻
+
+5) Your choices: managing cookies
+
+You can manage cookies in several ways:
+
+A. Browser settings
+Most browsers let you block or delete cookies. Check your browser’s Help/Settings:
+ • Microsoft Edge
+ • Mozilla Firefox
+ • Google Chrome
+ • Apple Safari
+ • Opera
+
+B. Mobile settings
+ • Android: See Google Support for managing cookies/site data.
+ • iOS (iPhone/iPad): See Apple Support for Safari and app privacy controls.
+
+C. Ad/Tracking preferences (where available)
+ • Device or platform ad settings (e.g., “Limit Ad Tracking,” “Ad Personalization”)
+ • Browser add-ons or privacy tools (ad blockers, tracking protection)
+
+Note: Blocking some cookies may impact Site functionality or prevent certain features from working properly.
+
+⸻
+
+6) Do Not Track (DNT)
+
+Some browsers offer a “Do Not Track” signal. There is currently no common industry standard for responding to DNT; as such, our Site may not respond to these signals. We will update this policy if standards emerge.
+
+⸻
+
+7) International users & legal bases
+
+Where required (e.g., in the EU/UK), we rely on consent for non-essential cookies (analytics/advertising) and on legitimate interests or contractual necessity for essential cookies. You may withdraw consent at any time by adjusting your cookie preferences or browser settings.
+
+⸻
+
+8) Updates to this Cookie Policy
+
+We may update this policy from time to time to reflect changes in technology, law, or our practices. We will post the updated date at the top of this page. Continued use of the Site indicates acceptance of the updated policy.
+
+⸻
+
+9) Contact us
+
+Questions about this Cookie Policy or our data practices?
+📧 minddcheck@gmail.com`,
+          refund: `2 Modifications to Terms\n\nWe may modify these Terms at any time. Material changes will be notified via email;\n • New users: changes effective upon posting;\n • Existing users: changes effective 30 days after notification.\nContinued use after changes indicates acceptance.\n\n⸻\n\n5. ACCOUNT ELIGIBILITY AND SECURITY\n\n5.1 Age Requirements\n\nMinimum age: 18 years (or legal age in your jurisdiction). Age verification may be required.\n\n5.2 Account Creation\n\nOne account per user. Valid email and accurate information are required and must be kept up to date.\n\n5.3 Security Requirements\n\nYou must protect your access credentials and promptly report any unauthorized access.\n\n5.4 Account Protection\n\nWe may use passwordless authentication, single-use codes, time-limited access, and session security measures.\n\n5.5 Prohibited Activities\n\nNo multiple accounts, credential sharing, false information, unauthorized access, or attempts to bypass security.\n\n5.6 Organizational Usage\n\nIf accessing on behalf of an organization, you confirm proper authority. Restrictions and verification may apply.\n\n5.7 Data Retention Policy\n\nInactive accounts (no interaction for 365 days) may be permanently deleted, along with associated data, to support security and efficiency.\n\n⸻\n\n6. SUBSCRIPTION SERVICES\n\n6.1 Plans and Pricing\n • Trial: 7 days for $1.00 (one-time).\n • Standard plans: Weekly, monthly, or quarterly billing (price shown at signup; regional pricing may apply).\n\n6.2 Trial Period\n\nTrial is limited to first-time users and converts to the selected plan unless canceled before trial ends.\n\n6.3 Billing and Payment\n • Payments are processed by PCI-DSS compliant providers; major cards and select regional methods supported.\n • Automatic billing occurs at the end of each billing cycle unless canceled.\n • Trial payment verification may appear as two small charges totaling $1 (depending on region/method).\n\n6.4 Cancellation Process\n\nCancel anytime via self-service portal or by contacting minddcheck@gmail.com. Service continues until the end of the current billing period. No partial refunds for unused time.\n\n⸻\n\n7. REFUND POLICY\n\nRefunds are not provided except for documented billing errors, duplicate charges, unauthorized transactions, or service unavailability exceeding 24 consecutive hours (excluding maintenance/force majeure) reported within 30 days and verified by our team. Legal requirements in your jurisdiction will be honored.\n\n⸻\n\n8. INTELLECTUAL PROPERTY RIGHTS\n\nAll Platform content and functionality (including assessments, reports, text, graphics, logos, interface elements, and software) are owned by MyTraumaTest or its licensors and protected by applicable IP laws. Personal, non-commercial, non-transferable license only. No reverse engineering, modification, or redistribution.\n\n⸻\n\n9. USER CONTENT AND RIGHTS\n\n9.1 User Ownership\n\nYou retain ownership of content you submit (e.g., responses, profile data). Personal data remains yours as described in our Privacy Policy.\n\n9.2 License to MyTraumaTest\n\nYou grant MyTraumaTest a non-exclusive, worldwide, royalty-free license to process your content to provide and improve the Service, including anonymized/aggregated analytics and statistics.\n\n9.3 Content Restrictions\n\nDo not submit copyrighted, harmful, unlawful, deceptive, or malicious content, or code intended to disrupt the Platform.\n\n⸻\n\n10. SERVICE LEVEL AGREEMENT (SLA)\n\nTarget uptime is 97% annually, excluding scheduled maintenance and force majeure. We monitor performance and may apply maintenance windows during low-usage periods.\n\n⸻\n\n11. TECHNICAL REQUIREMENTS\n\nUse the latest versions of modern browsers (Chrome, Safari, Firefox, Edge). Stable internet (≥1 Mbps) is required. Cookies and JavaScript must be enabled. Mobile OS should have current security patches.\n\n⸻\n\n12. CUSTOMER SUPPORT AND COMPLAINTS\n\n12.1 Availability\n\nSupport is available 24/7/365. Average response time: 6–12 hours.\n\n12.2 Channels\n • Help Center (if available)\n • Email: minddcheck@gmail.com\n\n12.3 Process`,
+          cancel: `How to cancel\n\nIf you subscribed through a third-party (e.g., Stripe, App Store), manage your subscription in that account dashboard.\nIf you purchased a one-time access, no further charges will occur. For assistance, email minddcheck@gmail.com.`,
+          help: `Help Center\n\n• Getting started: take the test and review your results.\n• Troubleshooting: refresh the page, clear cache, or try a different browser.\n• Contact: minddcheck@gmail.com (24/7/365).`,
+          blog: `Blog\n\nLong-form articles about self-awareness, resilience, and gentle practices. New posts are added regularly.`,
+          reviews: `Reviews\n\nWe collect authentic feedback to improve the service. Submissions may be edited for clarity and brevity.`,
+          pricing: `Pricing\n\nSimple, transparent pricing. One-time payments for results. No hidden fees. For custom needs, contact minddcheck@gmail.com.`
+        };
+        return (
+          <div>
+            <main className="min-h-[60vh] flex items-center justify-center p-4">
+              <div className="w-full max-w-4xl mx-auto">
+                <div className="bg-white/5 backdrop-blur-md rounded-3xl shadow-soft p-8 sm:p-12 border border-white/10">
+                  <div className="text-center">
+                    <img src="logo.png" alt="Logo" className="mx-auto h-14 w-14 rounded-2xl shadow-soft mb-4 opacity-90" />
+                    <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight">Childhood Trauma Check</h1>
+                    <p className="mt-3 text-muted max-w-2xl mx-auto">A gentle self‑check focused on early experiences. Answer a few questions and get a clear, private result.</p>
+                  </div>
+                  <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button onClick={onStartNew} className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-accent/30 to-accent-2/30 hover:from-accent/40 hover:to-accent-2/40 text-ink px-6 py-3 font-semibold shadow-soft transition transform active:scale-[0.98]">Start Test</button>
+                    {canResume && (
+                      <button onClick={onResume} className="w-full sm:w-auto rounded-2xl bg-white/5 hover:bg-white/10 text-ink px-6 py-3 font-medium border border-white/10 shadow-soft transition transform active:scale-[0.98]">Resume</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </main>
+
+            {/* Why choose us — removed */}
+
+            {/* What You Will Gain */}
+            <section className="px-4 pb-12">
+              <div className="max-w-6xl mx-auto rounded-2xl bg-white border border-slate-200 p-6">
+                <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900">What You Will Gain After Taking the Test</h2>
+                <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-700">
+                  <li className="flex items-start gap-3"><span className="text-green-600">✓</span><span>Identify which childhood traumas shape your emotional reactions.</span></li>
+                  <li className="flex items-start gap-3"><span className="text-green-600">✓</span><span>Understand how past experiences influence your relationships and work situations.</span></li>
+                  <li className="flex items-start gap-3"><span className="text-green-600">✓</span><span>Receive a structured report that highlights the key areas for growth and healing.</span></li>
+                  <li className="flex items-start gap-3"><span className="text-green-600">✓</span><span>Outline the first steps toward personal therapy and self‑help.</span></li>
+                </ul>
+              </div>
+            </section>
+            {/* Footer removed here; added below FAQ */}
+            {/* Footer removed here; will be added below FAQ */}
+            {/* Footer moved below FAQ */}
+            {/* Footer will be rendered below the FAQ */}
+
+            {/* Footer moved below FAQ */}
+
+
+            {/* Testimonials */}
+            <section className="px-4 pb-8">
+              <div className="max-w-6xl mx-auto">
+                <h2 className="text-center text-2xl sm:text-3xl font-semibold">What users say</h2>
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-soft">
+                    <div className="font-medium">Aigerim K.</div>
+                    <div className="text-xs text-muted">Verified user</div>
+                    <div className="mt-2 text-yellow-500" aria-label="5 stars">★★★★★</div>
+                    <p className="text-sm text-muted mt-2">“Short and gentle. Helped me notice patterns without feeling judged.”</p>
+                  </div>
+                  <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-soft">
+                    <div className="font-medium">Ivan P.</div>
+                    <div className="text-xs text-muted">Verified user</div>
+                    <div className="mt-2" aria-label="4 stars"><span className="text-yellow-500">★★★★</span><span className="text-slate-300">★</span></div>
+                    <p className="text-sm text-muted mt-2">“Very clear result and simple design. Worth the small payment.”</p>
+                  </div>
+                  <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-soft">
+                    <div className="font-medium">Sara M.</div>
+                    <div className="text-xs text-muted">Verified user</div>
+                    <div className="mt-2" aria-label="5 stars"><span className="text-yellow-500">★★★★★</span></div>
+                    <p className="text-sm text-muted mt-2">“I shared the PDF with my therapist — a good starting point.”</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+            {/* Help / Blog / Reviews / Pricing */}
+            <section className="px-4 pb-16">
+              <div className="max-w-6xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Help */}
+                  <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-soft">
+                    <h3 className="text-xl font-semibold text-slate-900">Help</h3>
+                    <p className="mt-2 text-sm text-muted">Getting started is simple: take the test and review your results. Troubleshooting? Try refreshing the page, clearing cache, or another browser. Need assistance? We respond 24/7 at <a href="mailto:minddcheck@gmail.com" className="text-accent underline">minddcheck@gmail.com</a>.</p>
+                  </div>
+                  {/* Blog */}
+                  <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-soft">
+                    <h3 className="text-xl font-semibold text-slate-900">Blog</h3>
+                    <p className="mt-2 text-sm text-muted">Explore long‑form articles about self‑awareness, resilience, and gentle practices. New posts are added regularly to support your personal growth journey.</p>
+                  </div>
+                  {/* Reviews */}
+                  <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-soft">
+                    <h3 className="text-xl font-semibold text-slate-900">Reviews</h3>
+                    <p className="mt-2 text-sm text-muted">We welcome authentic feedback to improve the service. Submissions may be curated for clarity and brevity while preserving the original meaning.</p>
+                  </div>
+                  {/* Pricing */}
+                  <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-soft">
+                    <h3 className="text-xl font-semibold text-slate-900">Pricing</h3>
+                    <p className="mt-2 text-sm text-muted">Simple and transparent. One‑time payments for results — no hidden fees. For custom or team needs, contact us at <a href="mailto:minddcheck@gmail.com" className="text-accent underline">minddcheck@gmail.com</a>.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+            {/* Global Footer placeholder removed here; footer rendered below FAQ */}
+
+            {/* Removed: How it works */}
+
+            {/* Famous figures (neutral) */}
+            <section className="px-4 pb-16">
+              <div className="max-w-6xl mx-auto rounded-2xl bg-white border border-slate-200 p-6">
+                <div className="text-center">
+                  <div className="text-lg sm:text-xl font-semibold text-slate-900">Even world‑famous stars have their own struggles</div>
+                  <p className="text-sm text-muted mt-2">Many public figures share aspects of their early life in interviews and biographies. Every story is unique — if you recognize difficult patterns from your past, taking the first gentle steps toward support can help.</p>
+                </div>
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 place-items-center">
+                  <figure className="text-center bg-white border border-slate-200 shadow-soft rounded-3xl p-4 w-full max-w-[14rem]">
+                    <img src="elon.jpg" alt="Elon Musk" className="w-full h-72 sm:h-80 rounded-2xl object-cover shadow-xl ring-1 ring-slate-200" />
+                    <figcaption className="mt-3 text-sm text-muted">As a child, Elon felt lonely and out of place. That struggle built the resilience that drives him to shape the future of technology.</figcaption>
+                  </figure>
+                  <figure className="text-center bg-white border border-slate-200 shadow-soft rounded-3xl p-4 w-full max-w-[14rem]">
+                    <img src="eminem.webp" alt="Eminem" className="w-full h-72 sm:h-80 rounded-2xl object-cover shadow-xl ring-1 ring-slate-200" />
+                    <figcaption className="mt-3 text-sm text-muted">Eminem’s tough childhood fueled the raw energy of his music, giving a voice to an entire generation.</figcaption>
+                  </figure>
+                  <figure className="text-center bg-white border border-slate-200 shadow-soft rounded-3xl p-4 w-full max-w-[14rem]">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a0/Bill_Gates_2018.jpg" alt="Bill Gates" className="w-full h-72 sm:h-80 rounded-2xl object-cover shadow-xl ring-1 ring-slate-200" />
+                    <figcaption className="mt-3 text-sm text-muted">In his youth, Bill faced pressure and self‑doubt. He turned it into motivation to build one of the world’s most influential companies.</figcaption>
+                  </figure>
+                </div>
+              </div>
+            </section>
+
+            {/* FAQ */}
+            <section className="px-4 pb-14">
+              <div className="max-w-6xl mx-auto">
+                <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900">Frequently Asked Questions</h2>
+                <div className="mt-6 space-y-3">
+                  <details className="group rounded-2xl bg-white border border-slate-200 p-4 open:shadow-soft">
+                    <summary className="cursor-pointer list-none flex items-center justify-between text-slate-900 font-medium">
+                      <span>1. What will this test give me?</span>
+                      <span className="ml-4 text-slate-400 group-open:rotate-180 transition">▾</span>
+                    </summary>
+                    <div className="mt-2 text-sm text-muted">The test will help you understand which childhood traumas influence your life and suggest the first steps toward change.</div>
+                  </details>
+                  <details className="group rounded-2xl bg-white border border-slate-200 p-4 open:shadow-soft">
+                    <summary className="cursor-pointer list-none flex items-center justify-between text-slate-900 font-medium">
+                      <span>2. Is this test a medical or psychological diagnosis?</span>
+                      <span className="ml-4 text-slate-400 group-open:rotate-180 transition">▾</span>
+                    </summary>
+                    <div className="mt-2 text-sm text-muted">No. The test does not replace therapy or medical consultation, but it can be an important first step toward self-awareness.</div>
+                  </details>
+                  <details className="group rounded-2xl bg-white border border-slate-200 p-4 open:shadow-soft">
+                    <summary className="cursor-pointer list-none flex items-center justify-between text-slate-900 font-medium">
+                      <span>3. Is it safe to take the test?</span>
+                      <span className="ml-4 text-slate-400 group-open:rotate-180 transition">▾</span>
+                    </summary>
+                    <div className="mt-2 text-sm text-muted">Yes. All your answers are completely confidential. We do not share your data with third parties.</div>
+                  </details>
+                  <details className="group rounded-2xl bg-white border border-slate-200 p-4 open:shadow-soft">
+                    <summary className="cursor-pointer list-none flex items-center justify-between text-slate-900 font-medium">
+                      <span>4. What should I do after completing the test?</span>
+                      <span className="ml-4 text-slate-400 group-open:rotate-180 transition">▾</span>
+                    </summary>
+                    <div className="mt-2 text-sm text-muted">You’ll receive recommendations on where to start your healing journey. You can use them on your own or as guidance when working with a professional.</div>
+                  </details>
+                </div>
+              </div>
+            </section>
+            <footer className="relative bg-gradient-to-b from-[#0b1220] to-[#0f1426] text-slate-100">
+              <div className="max-w-6xl mx-auto px-4 py-12">
+                <div className="rounded-3xl p-[1px] bg-gradient-to-r from-indigo-500/60 via-sky-500/60 to-cyan-400/60">
+                  <div className="rounded-3xl bg-[#0b1220]/95 backdrop-blur-md p-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
+                      {/* 1. Logo and Socials */}
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <img src="logo.png" alt="Logo" className="h-10 w-10 rounded-2xl ring-1 ring-white/15 shadow-soft" />
+                          <span className="text-white/90 font-semibold tracking-tight">Brand</span>
+                        </div>
+                        <nav aria-label="Social links" className="mt-4">
+                          <ul className="flex items-center gap-3">
+                            <li>
+                              <a href="#" aria-label="TikTok" className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 transition" title="TikTok">
+                                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M20 8.5a6.5 6.5 0 0 1-4-1.4v6.24a5.34 5.34 0 1 1-5.34-5.34c.28 0 .55.02.82.07v2.2a3.07 3.07 0 1 0 2.25 2.96V2h2.22a4.28 4.28 0 0 0 4.05 3.03V8.5z" />
+                                </svg>
+                              </a>
+                            </li>
+                            <li>
+                              <a href="https://www.instagram.com/mytraumatest/#" target="_blank" rel="noopener" aria-label="Instagram" className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 transition" title="Instagram">
+                                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" xmlns="http://www.w3.org/2000/svg">
+                                  <rect x="3.5" y="3.5" width="17" height="17" rx="5"/>
+                                  <circle cx="12" cy="12" r="3.5"/>
+                                  <circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none"/>
+                                </svg>
+                              </a>
+                            </li>
+                          </ul>
+                        </nav>
+                      </div>
+
+                      {/* 2. Customer Support */}
+                      <nav aria-label="Customer Support">
+                        <div className="font-semibold text-white/95">Customer Support</div>
+                        <ul className="mt-3 space-y-2 text-sm">
+                          <li><a href="#" onClick={(e)=>{e.preventDefault(); setModal('cancel');}} className="text-white/80 hover:text-white">How to cancel</a></li>
+                          <li><a href="mailto:minddcheck@gmail.com" className="inline-flex items-center gap-2 text-white/80 hover:text-white"><span className="px-2 py-1 text-[11px] rounded-full bg-emerald-400/15 text-emerald-200 ring-1 ring-emerald-300/20">24/7/365</span><span>Customer Support</span></a></li>
+                        </ul>
+                      </nav>
+
+                      {/* 3. Legal */}
+                      <nav aria-label="Legal">
+                        <div className="font-semibold text-white/95">Legal</div>
+                        <ul className="mt-3 space-y-2 text-sm">
+                          <li><a href="#" onClick={(e)=>{e.preventDefault(); setModal('privacy');}} className="text-white/80 hover:text-white">Privacy Policy</a></li>
+                          <li><a href="#" onClick={(e)=>{e.preventDefault(); setModal('terms');}} className="text-white/80 hover:text-white">Terms of Use</a></li>
+                          <li><a href="#" onClick={(e)=>{e.preventDefault(); setModal('cookie');}} className="text-white/80 hover:text-white">Cookie Policy</a></li>
+                          <li><a href="#" onClick={(e)=>{e.preventDefault(); setModal('refund');}} className="text-white/80 hover:text-white">Refund Policy</a></li>
+                        </ul>
+                      </nav>
+
+                      {/* 4. About */}
+                      <nav aria-label="About">
+                        <div className="font-semibold text-white/95">About</div>
+                        <ul className="mt-3 space-y-2 text-sm">
+                          <li><a href="#" onClick={(e)=>{e.preventDefault(); setModal('help');}} className="text-white/80 hover:text-white">Help</a></li>
+                          <li><a href="#" onClick={(e)=>{e.preventDefault(); setModal('blog');}} className="text-white/80 hover:text-white">Blog</a></li>
+                          <li><a href="#" onClick={(e)=>{e.preventDefault(); setModal('reviews');}} className="text-white/80 hover:text-white">Reviews</a></li>
+                          <li><a href="#" onClick={(e)=>{e.preventDefault(); setModal('pricing');}} className="text-white/80 hover:text-white">Pricing</a></li>
+                        </ul>
+                      </nav>
+                      {/* 5. Other sites */}
+                      <nav aria-label="Other sites">
+                        <div className="font-semibold text-white/95">Other sites</div>
+                        <ul className="mt-3 space-y-2 text-sm">
+                          <li><a href="https://redfind.tiiny.co" target="_blank" rel="noopener" className="text-white/80 hover:text-white">redfind.tiiny.co</a></li>
+                        </ul>
+                      </nav>
+                    </div>
+
+                    <hr className="my-8 border-white/10" />
+
+                    {/* Bottom line */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/70">
+                      <div>© 2024–2025 Brand™. All rights reserved. Trademarks mentioned belong to their respective owners.</div>
+                      <div className="hidden sm:flex items-center gap-3" aria-hidden="true">
+                        <span className="h-1 w-1 rounded-full bg-white/30"></span>
+                        <span className="h-1 w-1 rounded-full bg-white/30"></span>
+                        <span className="h-1 w-1 rounded-full bg-white/30"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </footer>
+            {modal && (
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
+                <div className="absolute inset-0 bg-black/50" onClick={() => setModal(null)} aria-hidden="true"></div>
+                <div className="relative w-full sm:max-w-3xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden">
+                  <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-200">
+                    <h3 className="text-base sm:text-lg font-semibold text-slate-900">{MODAL_TITLES[modal] || 'Info'}</h3>
+                    <button onClick={() => setModal(null)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Close">✕</button>
+                  </div>
+                  <div className="px-5 sm:px-6 py-5 max-h-[70vh] overflow-y-auto">
+                    <div className="prose prose-sm sm:prose max-w-none text-slate-800 whitespace-pre-wrap">
+                      {MODAL_TEXTS[modal] || 'Content not available.'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function Test({ onFinish, onBackToHome, initialState }) {
+        const [currentIndex, setCurrentIndex] = useState(initialState?.currentIndex ?? 0);
+        const [answers, setAnswers] = useState(initialState?.answers ?? Array(QUESTIONS.length).fill(null));
+
+        const currentQuestion = QUESTIONS[currentIndex];
+        const answeredCount = useMemo(() => answers.filter((a) => a != null).length, [answers]);
+        const canNext = answers[currentIndex] != null;
+        const isLast = currentIndex === QUESTIONS.length - 1;
+
+        useEffect(() => {
+          const payload = { currentIndex, answers, ts: Date.now() };
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch (e) {}
+        }, [currentIndex, answers]);
+
+        function handleSelect(value) {
+          setAnswers((prev) => {
+            const copy = [...prev];
+            copy[currentIndex] = value;
+            return copy;
+          });
+        }
+
+        function handleNext() {
+          if (!canNext) return;
+          if (isLast) {
+            const score = calculateScore(answers);
+            try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+            onFinish({ answers, score });
+            return;
+          }
+          setCurrentIndex((idx) => Math.min(idx + 1, QUESTIONS.length - 1));
+        }
+
+        function handleBack() {
+          if (currentIndex === 0) return;
+          setCurrentIndex((idx) => Math.max(idx - 1, 0));
+        }
+
+        return (
+          <main className="min-h-screen flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl mx-auto">
+              <div className="bg-white/5 backdrop-blur-md rounded-3xl shadow-soft p-6 sm:p-8 border border-white/10">
+                <button onClick={onBackToHome} className="text-sm text-muted hover:text-ink transition">← Home</button>
+                <ProgressBar currentIndex={currentIndex} total={QUESTIONS.length} answeredCount={answeredCount} />
+                <div className="mt-2">
+                  <div className="text-sm text-muted">Question {currentIndex + 1} of {QUESTIONS.length}</div>
+                  <div key={currentQuestion.id} className="animate-fadeSlide">
+                    <h2 className="mt-2 text-xl sm:text-2xl font-semibold">
+                      {currentQuestion.text}
+                    </h2>
+                    <ChoiceGroup
+                      name={`q_${currentQuestion.id}`}
+                      value={answers[currentIndex]}
+                      onChange={handleSelect}
+                    />
+                  </div>
+                </div>
+                <div className="mt-8 flex items-center justify-between gap-3">
+                  <button
+                    onClick={handleBack}
+                    disabled={currentIndex === 0}
+                    className={`rounded-2xl px-5 py-3 font-medium transition transform active:scale-[0.98] ${currentIndex === 0 ? 'bg-white/5 text-muted/60 cursor-not-allowed' : 'bg-white/5 hover:bg-white/10 text-ink border border-white/10 shadow-soft'}`}
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    disabled={!canNext}
+                    className={`rounded-2xl px-6 py-3 font-semibold transition transform active:scale-[0.98] ${!canNext ? 'bg-white/5 text-muted/60 cursor-not-allowed' : 'bg-gradient-to-r from-accent/30 to-accent-2/30 text-ink shadow-soft hover:shadow-md'}`}
+                  >
+                    {isLast ? 'See Results' : 'Next'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </main>
+        );
+      }
+
+      function Payment({ onComplete, onBack }) {
+        const [isProcessing, setIsProcessing] = useState(false);
+        const [confirmEnabled, setConfirmEnabled] = useState(false);
+        const [errorMsg, setErrorMsg] = useState('');
+        const isFile = typeof window !== 'undefined' && window.location.protocol === 'file:';
+
+        async function handlePayment() {
+          setErrorMsg('');
+          if (isFile) {
+            // Client-only mode using a Payment Link; cannot auto-verify
+            setIsProcessing(true);
+            window.open('https://buy.stripe.com/6oUbIU1y56R0c13gymbsc00', '_blank');
+            // Enable manual confirmation after a short delay
+            setTimeout(() => { setIsProcessing(false); setConfirmEnabled(true); }, 2000);
+            return;
+          }
+          try {
+            setIsProcessing(true);
+            // Create Checkout Session via backend
+            const resp = await fetch('/api/create-checkout-session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+            });
+            if (!resp.ok) {
+              let details = '';
+              try { const t = await resp.text(); details = t; } catch (e) {}
+              if (details) {
+                // try to parse JSON
+                try {
+                  const j = JSON.parse(details);
+                  details = j.error || details;
+                } catch (_) {}
+              }
+              throw new Error(details || 'Failed to start payment');
+            }
+            const data = await resp.json();
+            if (data.url) {
+              window.location.href = data.url;
+            } else if (data.id) {
+              window.location.href = `https://checkout.stripe.com/c/pay/${data.id}`;
+            } else {
+              throw new Error('Invalid session response');
+            }
+          } catch (e) {
+            console.error(e);
+            setErrorMsg(e?.message || 'Unable to start payment. Please try again.');
+            setIsProcessing(false);
+          }
+        }
+
+        return (
+          <main className="min-h-screen flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl mx-auto">
+              <div className="bg-white rounded-3xl shadow-soft p-6 sm:p-8 border border-slate-200">
+                <div className="text-center">
+                  <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900">Payment Required</h2>
+                  <p className="mt-2 text-muted">Complete your payment to view your result</p>
+                </div>
+                
+                <div className="mt-8">
+                  <div className="text-center mb-6">
+                    <div className="text-6xl font-bold text-accent">$1</div>
+                    <div className="text-lg text-muted mt-2">One‑time payment</div>
+                  </div>
+                </div>
+
+                <div className="mt-8 space-y-4">
+                  <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold text-lg text-slate-900">Stripe payment</div>
+                        <div className="text-sm text-muted">Secure credit/debit card payment</div>
+                      </div>
+                      <div className="text-sm bg-accent/10 text-accent px-3 py-1 rounded-full">Secure</div>
+                    </div>
+                    <div className="mt-3 text-sm text-muted">
+                      Pay safely with your card through Stripe’s secure system
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 text-center space-y-3">
+                  <button
+                    onClick={handlePayment}
+                    disabled={isProcessing}
+                    className="w-full rounded-2xl bg-accent text-white px-6 py-4 text-lg font-semibold shadow-soft hover:shadow-md transition transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isProcessing ? (isFile ? 'Opening Stripe…' : 'Redirecting to Stripe…') : 'Pay $1 with Stripe'}
+                  </button>
+                  {errorMsg && (
+                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2">{errorMsg}</div>
+                  )}
+                  {isFile && (
+                    <button
+                      onClick={() => onComplete()}
+                      disabled={!confirmEnabled}
+                      className="w-full rounded-2xl bg-white/5 hover:bg-white/10 text-ink px-6 py-3 font-medium border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      I've completed the payment
+                    </button>
+                  )}
+                  {isFile && (
+                    <p className="text-xs text-muted">Note: Running from file:// cannot auto-verify payment. Use this button after you pay.</p>
+                  )}
+                </div>
+
+                <div className="mt-6 text-center">
+                  <button onClick={onBack} className="text-sm text-muted hover:text-slate-900 transition">
+                    ← Back to test
+                  </button>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-slate-200">
+                  <div className="text-center mb-4">
+                    <h3 className="text-lg font-semibold text-slate-900">Why payment is required</h3>
+                  </div>
+                  <div className="text-sm text-muted text-center space-y-2">
+                    <p>• Service preparation and maintenance</p>
+                    <p>• Detailed, personalized insights</p>
+                    <p>• Secure and confidential results</p>
+                    <p>• Continued product improvement</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        );
+      }
+
+      function Results({ data, onRestart, onPayment }) {
+        const { score, answers } = data;
+        const interp = getInterpretation(score);
+        const max = QUESTIONS.length * 4;
+        const mailto = useMemo(() => {
+          const subject = encodeURIComponent('My Childhood Trauma Check Result');
+          const bodyLines = [
+            'I took the online test.',
+            `Score: ${score} / ${max} (${interp.pct}%)`,
+            `Level: ${interp.level}`,
+            '',
+            'Summary: ' + interp.note,
+            '',
+            'Answers:',
+            ...QUESTIONS.map((q, i) => `Q${i + 1}: ${q.text} → ${CHOICES[answers[i] ?? 0].label}`)
+          ];
+          return `mailto:?subject=${subject}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+        }, [score, answers]);
+
+        function handleDownload() {
+          const element = document.getElementById('results-card');
+          const opt = {
+            margin: 0.5,
+            filename: 'childhood-insights-result.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+          };
+          html2pdf().set(opt).from(element).save();
+        }
+
+        return (
+          <main className="min-h-screen flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl mx-auto">
+              <div id="results-card" className="bg-white/5 backdrop-blur-md rounded-3xl shadow-soft p-6 sm:p-8 border border-white/10">
+                <div className="text-center">
+                  <h2 className="text-2xl sm:text-3xl font-semibold">Your Result</h2>
+                  <p className="mt-2 text-muted">This is only the first step toward better self‑understanding.</p>
+                </div>
+                <div className="mt-6 rounded-2xl bg-gradient-to-r from-accent/15 to-accent-2/15 p-5 flex flex-col sm:flex-row items-center justify-between gap-4 border border-white/10">
+                  <div>
+                    <div className="text-sm text-muted">Score</div>
+                    <div className="text-3xl font-bold">{score} <span className="text-base font-medium text-muted">/ {max} ({interp.pct}%)</span></div>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <div className="text-sm text-muted">Level</div>
+                    <div className="text-xl font-semibold">{interp.level}</div>
+                  </div>
+                </div>
+                <p className="mt-4 text-ink leading-relaxed">{interp.note}</p>
+                <p className="mt-2 text-muted text-sm">If you need further support, consider reaching out to a qualified professional in your area.</p>
+
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button onClick={handleDownload} className="rounded-2xl bg-gradient-to-r from-accent/30 to-accent-2/30 text-ink px-6 py-3 font-semibold shadow-soft hover:shadow-md transition transform active:scale-[0.98]">Download PDF</button>
+                  <button onClick={onRestart} className="rounded-2xl bg-white/5 hover:bg-white/10 text-ink px-5 py-3 font-medium border border-white/10 shadow-soft transition transform active:scale-[0.98]">Take Again</button>
+                </div>
+              </div>
+            </div>
+          </main>
+        );
+      }
+
+      function App() {
+        const [view, setView] = useState('home'); // 'home' | 'test' | 'results' | 'payment'
+        const [results, setResults] = useState(null);
+        const [resumeState, setResumeState] = useState(null);
+
+        useEffect(() => {
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed && Array.isArray(parsed.answers)) {
+                const trimmedAnswers = parsed.answers.slice(0, QUESTIONS.length);
+                while (trimmedAnswers.length < QUESTIONS.length) trimmedAnswers.push(null);
+                const safeIndex = Math.min(parsed.currentIndex ?? 0, QUESTIONS.length - 1);
+                setResumeState({ currentIndex: safeIndex, answers: trimmedAnswers });
+              }
+            }
+          } catch (e) {}
+        }, []);
+
+        // On first load, check Stripe return URL. If success, verify session and unlock results
+        useEffect(() => {
+          const params = new URLSearchParams(window.location.search);
+          const success = params.get('success');
+          const sessionId = params.get('session_id');
+          async function verifyAndUnlock() {
+            try {
+              if (success === '1' && sessionId) {
+                const resp = await fetch(`/api/checkout-session?id=${encodeURIComponent(sessionId)}`);
+                if (!resp.ok) throw new Error('Session verification failed');
+                const data = await resp.json();
+                if (data.payment_status === 'paid' || data.status === 'complete') {
+                  const pendingRaw = localStorage.getItem(RESULTS_PENDING_KEY);
+                  if (pendingRaw) {
+                    const pending = JSON.parse(pendingRaw);
+                    setResults(pending);
+                    setView('results');
+                    localStorage.removeItem(RESULTS_PENDING_KEY);
+                  } else {
+                    // If no pending results, return to home
+                    setView('home');
+                  }
+                }
+              }
+            } catch (e) {
+              console.error('Verification error', e);
+            } finally {
+              // Clean URL
+              if (success || sessionId) {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('success');
+                url.searchParams.delete('session_id');
+                url.searchParams.delete('canceled');
+                window.history.replaceState({}, '', url.toString());
+              }
+            }
+          }
+          verifyAndUnlock();
+        }, []);
+
+        if (view === 'home') {
+          return (
+            <Home
+              onStartNew={() => { try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}; setResumeState(null); setView('test'); }}
+              onResume={() => setView('test')}
+              canResume={!!resumeState}
+            />
+          );
+        }
+
+        if (view === 'test') {
+          return (
+            <Test
+              onFinish={(data) => { 
+                setResults(data); 
+                try { localStorage.setItem(RESULTS_PENDING_KEY, JSON.stringify(data)); } catch (e) {}
+                setView('payment'); 
+              }}
+              onBackToHome={() => setView('home')}
+              initialState={resumeState}
+            />
+          );
+        }
+
+        if (view === 'payment') {
+          return (
+            <Payment
+              onComplete={() => setView('results')}
+              onBack={() => setView('test')}
+            />
+          );
+        }
+
+        return (
+          <Results
+            data={results}
+            onRestart={() => { setResults(null); setView('home'); }}
+          />
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
