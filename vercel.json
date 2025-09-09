@@ -1,0 +1,6 @@
+{
+  "routes": [
+    { "src": "^/create-checkout-session$", "dest": "/api/create-checkout-session" },
+    { "src": "^/checkout-session$", "dest": "/api/checkout-session" }
+  ]
+}
