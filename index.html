@@ -881,7 +881,7 @@ Questions about this Cookie Policy or our data practices?
                       <nav aria-label="Other sites">
                         <div className="font-semibold text-white/95">Other sites</div>
                         <ul className="mt-3 space-y-2 text-sm">
-                          <li><a href="https://redfind.tiiny.co" target="_blank" rel="noopener" className="text-white/80 hover:text-white">redfind</a></li>
+                          <li><a href="https://redfind.tiiny.co" target="_blank" rel="noopener" className="text-white/80 hover:text-white">redfind.tiiny.co</a></li>
                         </ul>
                       </nav>
                     </div>
@@ -1019,7 +1019,7 @@ Questions about this Cookie Policy or our data practices?
           try {
             setIsProcessing(true);
             // Create Checkout Session via backend
-            const resp = await fetch('/api/create-checkout-session', {
+            const resp = await fetch('/create-checkout-session', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
             });
@@ -1219,7 +1219,7 @@ Questions about this Cookie Policy or our data practices?
           async function verifyAndUnlock() {
             try {
               if (success === '1' && sessionId) {
-                const resp = await fetch(`/api/checkout-session?id=${encodeURIComponent(sessionId)}`);
+                const resp = await fetch(`/checkout-session?id=${encodeURIComponent(sessionId)}`);
                 if (!resp.ok) throw new Error('Session verification failed');
                 const data = await resp.json();
                 if (data.payment_status === 'paid' || data.status === 'complete') {
