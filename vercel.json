@@ -1,6 +1,12 @@
 {
+  "version": 2,
+  "builds": [
+    { "src": "api/*.js", "use": "@vercel/node" },
+    { "src": "test/test/**", "use": "@vercel/static" }
+  ],
   "routes": [
     { "src": "^/create-checkout-session$", "dest": "/api/create-checkout-session" },
-    { "src": "^/checkout-session$", "dest": "/api/checkout-session" }
+    { "src": "^/checkout-session$", "dest": "/api/checkout-session" },
+    { "src": "^(?!/api/)(.*)$", "dest": "/test/test/$1" }
   ]
 }
